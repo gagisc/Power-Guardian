@@ -7,5 +7,5 @@ pysnmp>=6.1
 prometheus-client>=0.20
 matplotlib>=3.9
 streamlit>=1.35
-plotly>=5.22
+plotly>=6.8.0
 pytest>=8.2
