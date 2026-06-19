@@ -212,7 +212,7 @@ jobs:
           git archive --format=tar.gz --prefix=pdu-power-guardian-${{ github.ref_name }}/             HEAD -o pdu-power-guardian-${{ github.ref_name }}-src.tar.gz
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           name: "${{ github.ref_name }} — pdu-power-guardian"
           body_path: release_notes.md
