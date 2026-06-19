@@ -61,7 +61,7 @@ jobs:
 
       - name: Docker metadata (simulator)
         id: meta_simulator
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ghcr.io/${{ github.repository_owner }}/pdu-power-guardian/simulator
           tags: |
@@ -72,7 +72,7 @@ jobs:
 
       - name: Docker metadata (app)
         id: meta_app
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ghcr.io/${{ github.repository_owner }}/pdu-power-guardian/app
           tags: |
