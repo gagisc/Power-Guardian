@@ -1,0 +1,83 @@
+name: Nightly Benchmark
+
+on:
+  schedule:
+    - cron: "0 3 * * *"   # 03:00 UTC = 22:00 CDT daily
+  workflow_dispatch:
+    inputs:
+      n_steps:
+        description: "Simulation steps / frames"
+        default: "500"
+        type: string
+
+env:
+  PYTHON_VERSION: "3.11"
+
+jobs:
+  benchmark:
+    name: Full benchmark run
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with: { python-version: "${{ env.PYTHON_VERSION }}" }
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: nightly-pdu-power-guardian-${{ hashFiles('requirements.txt') }}
+
+      - name: Install deps
+        run: pip install numpy pandas scikit-learn torch matplotlib
+
+      - name: Setup simulation data
+        run: python src/simulator/pdu_simulator.py --n-steps ${{{ github.event.inputs.n_steps || '500' }}}
+
+      - name: Run full smoke experiment
+        run: python experiments/run_smoke.py --steps 500
+
+      - name: Collect benchmark metrics
+        id: metrics
+        run: |
+          python - <<'EOF'
+          import csv, json, pathlib, datetime
+
+          results_dir = pathlib.Path("experiments/results")
+          summary = {
+              "repo": "pdu-power-guardian",
+              "run_date": datetime.date.today().isoformat(),
+              "files": []
+          }
+          for f in sorted(results_dir.glob("*.csv")):
+              rows = list(csv.DictReader(open(f)))
+              summary["files"].append({"file": f.name, "rows": len(rows)})
+              print(f"  {f.name}: {len(rows)} rows")
+          with open("benchmark_summary.json", "w") as fp:
+              json.dump(summary, fp, indent=2)
+          print("Benchmark summary written.")
+          EOF
+
+      - name: Upload benchmark artefacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-benchmark-pdu-power-guardian-${{ github.run_id }}
+          path: |
+            experiments/results/
+            benchmark_summary.json
+          retention-days: 90
+
+      - name: Post summary to job output
+        run: |
+          echo "## 🌙 Nightly Benchmark — pdu-power-guardian" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| File | Rows |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|------|" >> $GITHUB_STEP_SUMMARY
+          python -c "
+          import json
+          d = json.load(open('benchmark_summary.json'))
+          for f in d['files']:
+              print(f'| {f["file"]} | {f["rows"]} |')
+          " >> $GITHUB_STEP_SUMMARY

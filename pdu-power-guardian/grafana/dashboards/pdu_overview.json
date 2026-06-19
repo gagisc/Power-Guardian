@@ -1,0 +1,46 @@
+{
+  "title": "PDU Power Guardian — Overview",
+  "uid": "pdu-overview-v1",
+  "schemaVersion": 38,
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "Eaton ePDU Inlet Power (W)",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+      "targets": [{
+        "datasource": "Prometheus",
+        "expr": "pdu_eaton_power_watts",
+        "legendFormat": "{{device}}"
+      }]
+    },
+    {
+      "type": "timeseries",
+      "title": "APC Smart-UPS Battery Charge (%)",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+      "targets": [{
+        "datasource": "Prometheus",
+        "expr": "pdu_apc_battery_charge_pct",
+        "legendFormat": "{{device}}"
+      }]
+    },
+    {
+      "type": "timeseries",
+      "title": "Schneider Galaxy Load (%)",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+      "targets": [{
+        "datasource": "Prometheus",
+        "expr": "pdu_schneider_load_pct",
+        "legendFormat": "{{device}}"
+      }]
+    },
+    {
+      "type": "stat",
+      "title": "Active Anomalies",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+      "targets": [{
+        "datasource": "Prometheus",
+        "expr": "sum(pdu_anomaly_score < -0.05)"
+      }]
+    }
+  ]
+}

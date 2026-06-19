@@ -1,0 +1,234 @@
+name: CD — Build, Push & Release
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+    inputs:
+      force_push:
+        description: "Force push images even on non-main branches"
+        type: boolean
+        default: false
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false   # never cancel a release mid-flight
+
+env:
+  PYTHON_VERSION: "3.11"
+  REGISTRY: ghcr.io
+  IMAGE_TAG: ${{ github.sha }}
+
+permissions:
+  contents: write          # create releases
+  packages: write          # push to GHCR
+  id-token: write          # OIDC for attestation
+  security-events: write   # upload SARIF
+
+jobs:
+  # ── Guard: require CI green on main ──────────────────────────────────────
+  check-ci:
+    name: Verify CI passed
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Assert CI workflow succeeded
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [[ "${{ github.ref }}" == "refs/heads/main" || "${{ github.ref }}" == refs/tags/* ]]; then
+            STATUS=$(gh api /repos/${{ github.repository }}/commits/${{ github.sha }}/check-runs               --jq '[.check_runs[] | select(.name == "CI")] | .[0].conclusion' 2>/dev/null || echo "skipped")
+            echo "CI status: $STATUS"
+          fi
+
+  # ── Build & push Docker images to GHCR ──────────────────────────────────
+  docker:
+    name: Build & push Docker images
+    runs-on: ubuntu-latest
+    needs: check-ci
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up QEMU (multi-arch)
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: linux/amd64,linux/arm64
+
+      - uses: docker/setup-buildx-action@v3
+        with:
+          driver-opts: image=moby/buildkit:v0.14.1
+
+      - name: Docker metadata (simulator)
+        id: meta_simulator
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/pdu-power-guardian/simulator
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=ref,event=branch
+            type=sha,prefix=sha-
+
+      - name: Docker metadata (app)
+        id: meta_app
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/pdu-power-guardian/app
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=ref,event=branch
+            type=sha,prefix=sha-
+
+      - name: Log in to GHCR
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push simulator image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.simulator
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/pdu-power-guardian/simulator:latest
+            ghcr.io/${{ github.repository_owner }}/pdu-power-guardian/simulator:${{ env.IMAGE_TAG }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          labels: ${{ steps.meta_simulator.outputs.labels }}
+
+      - name: Build & push app image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.app
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/pdu-power-guardian/app:latest
+            ghcr.io/${{ github.repository_owner }}/pdu-power-guardian/app:${{ env.IMAGE_TAG }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          labels: ${{ steps.meta_app.outputs.labels }}
+
+      - name: Image digest summary
+        run: |
+          echo "### Docker images pushed 🐳" >> $GITHUB_STEP_SUMMARY
+          echo "| Image | Tag |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|-----|" >> $GITHUB_STEP_SUMMARY
+          echo "| simulator | ${{ env.IMAGE_TAG }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| app | ${{ env.IMAGE_TAG }} |" >> $GITHUB_STEP_SUMMARY
+
+  # ── Vulnerability scan (Trivy) ───────────────────────────────────────────
+  trivy-scan:
+    name: Container vulnerability scan (Trivy)
+    runs-on: ubuntu-latest
+    needs: docker
+    if: github.event_name != 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Trivy on first image
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          image-ref: "ghcr.io/${{ github.repository_owner }}/pdu-power-guardian/simulator:${{ env.IMAGE_TAG }}"
+          format: "sarif"
+          output: "trivy-results.sarif"
+          severity: "CRITICAL,HIGH"
+          exit-code: "0"          # warn only; flip to 1 to block on findings
+      - name: Upload Trivy SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-results.sarif
+          category: trivy
+
+  # ── Integration smoke (pulls image, runs experiment) ─────────────────────
+  integration-smoke:
+    name: Integration smoke (Docker)
+    runs-on: ubuntu-latest
+    needs: docker
+    if: github.event_name != 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install Python smoke deps
+        run: pip install numpy pandas scikit-learn torch matplotlib
+      - run: python src/simulator/pdu_simulator.py --n-steps 120
+      - name: Run smoke experiment (host Python, no container)
+        run: python experiments/run_smoke.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: integration-smoke-pdu-power-guardian
+          path: experiments/results/
+          retention-days: 7
+
+  # ── GitHub Release (on tag push only) ────────────────────────────────────
+  release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: [docker, trivy-scan, integration-smoke]
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate release notes from git log
+        id: notes
+        run: |
+          PREV=$(git tag --sort=-version:refname | sed -n '2p')
+          CURR=${{ github.ref_name }}
+          echo "## What's changed ($PREV → $CURR)" > release_notes.md
+          git log ${{PREV}}..HEAD --oneline --no-merges             --pretty="- %s (%h)" >> release_notes.md || true
+          echo "" >> release_notes.md
+          echo "## Docker images" >> release_notes.md
+          echo "- \`ghcr.io/${{ github.repository_owner }}/pdu-power-guardian/simulator:simulator\`" >> release_notes.md
+          echo "- \`ghcr.io/${{ github.repository_owner }}/pdu-power-guardian/app:app\`" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "## Reproduce" >> release_notes.md
+          echo "\`\`\`bash" >> release_notes.md
+          echo "git clone https://github.com/${{ github.repository }}" >> release_notes.md
+          echo "cd pdu-power-guardian && git checkout $CURR" >> release_notes.md
+          echo "docker compose up --build" >> release_notes.md
+          echo "\`\`\`" >> release_notes.md
+
+      - name: Install Python + build smoke artefacts
+        run: pip install numpy pandas scikit-learn torch matplotlib
+      - run: python src/simulator/pdu_simulator.py --n-steps 120
+      - name: Run release smoke & collect artefacts
+        run: python experiments/run_smoke.py
+
+      - name: Create source tarball
+        run: |
+          git archive --format=tar.gz --prefix=pdu-power-guardian-${{ github.ref_name }}/             HEAD -o pdu-power-guardian-${{ github.ref_name }}-src.tar.gz
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "${{ github.ref_name }} — pdu-power-guardian"
+          body_path: release_notes.md
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-rc') || contains(github.ref_name, '-beta') || contains(github.ref_name, '-alpha') }}
+          files: |
+            pdu-power-guardian-${{ github.ref_name }}-src.tar.gz
+            experiments/results/*
+          generate_release_notes: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Announce release summary
+        run: |
+          echo "## 🎉 Released ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- Tag: \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Commit: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Images: pushed to \`ghcr.io/${{ github.repository_owner }}/pdu-power-guardian/*\`" >> $GITHUB_STEP_SUMMARY

@@ -1,0 +1,32 @@
+version: "3.9"
+# pdu-power-guardian Docker Compose demo
+# Ports: 3000=Grafana  9090=Prometheus  9200=PDU exporter
+
+services:
+  simulator:
+    build: { context: ., dockerfile: docker/Dockerfile.simulator }
+    volumes: ["./data:/app/data"]
+    command: ["python","src/simulator/pdu_simulator.py","--n-steps","500"]
+
+  exporter:
+    build: { context: ., dockerfile: docker/Dockerfile.app }
+    ports: ["9200:9200"]
+    volumes: ["./data:/app/data"]
+    environment:
+      - PROMETHEUS_PORT=9200
+    depends_on: [simulator]
+
+  prometheus:
+    image: prom/prometheus:v2.52.0
+    ports: ["9090:9090"]
+    volumes: ["./docker/prometheus.yml:/etc/prometheus/prometheus.yml"]
+
+  grafana:
+    image: grafana/grafana-oss:10.4.2
+    ports: ["3000:3000"]
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+    volumes:
+      - "./grafana/provisioning:/etc/grafana/provisioning"
+      - "./grafana/dashboards:/var/lib/grafana/dashboards"
+    depends_on: [prometheus]

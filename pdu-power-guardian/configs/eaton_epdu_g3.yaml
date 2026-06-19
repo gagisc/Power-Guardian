@@ -1,0 +1,36 @@
+# Eaton ePDU G3 — SNMP v2c configuration + key OID map
+# Reference: Eaton Intelligent Power Manager MIB (EATON-EPDU-MIB)
+# Replace PLACEHOLDER values via environment variables.
+
+snmp:
+  host: "${EATON_EPDU_HOST}"
+  port: 161
+  version: 2c
+  community: "${EATON_EPDU_COMMUNITY}"    # NEVER hard-code
+  timeout_s: 5
+  retries: 2
+
+oids:
+  # Inlet measurements
+  inlet_voltage_v:      "1.3.6.1.4.1.534.6.6.7.3.2.1.3.0.1"
+  inlet_current_ma:     "1.3.6.1.4.1.534.6.6.7.3.2.1.4.0.1"
+  inlet_power_w:        "1.3.6.1.4.1.534.6.6.7.3.2.1.6.0.1"
+  inlet_energy_wh:      "1.3.6.1.4.1.534.6.6.7.3.2.1.7.0.1"
+  inlet_pf:             "1.3.6.1.4.1.534.6.6.7.3.2.1.9.0.1"
+  # Outlet status (outlets 1–8 shown; extend as needed)
+  outlet_status_1:      "1.3.6.1.4.1.534.6.6.7.6.6.1.2.0.1"
+  outlet_current_ma_1:  "1.3.6.1.4.1.534.6.6.7.6.6.1.4.0.1"
+  outlet_power_w_1:     "1.3.6.1.4.1.534.6.6.7.6.6.1.6.0.1"
+  # Environmental (if Eaton ENV sensor installed)
+  temperature_c:        "1.3.6.1.4.1.534.6.6.7.7.1.1.4.0.1"
+  humidity_pct:         "1.3.6.1.4.1.534.6.6.7.7.1.1.5.0.1"
+  # Alarms
+  active_alarm_count:   "1.3.6.1.4.1.534.6.6.7.1.2.1.4.0"
+
+poll_interval_s: 30
+
+# SIMULATION MODE
+simulation:
+  enabled_if_host_unreachable: true
+  baseline_power_w: 3200
+  noise_std: 80

@@ -1,0 +1,17 @@
+.env
+*.pyc
+__pycache__/
+.venv/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+mlruns/
+wandb/
+experiments/results/
+*.pth
+*.onnx
+*.pt
+data/raw/
+data/synthetic/
+.DS_Store
