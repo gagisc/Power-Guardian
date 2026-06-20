@@ -66,4 +66,3 @@ class SequenceAnomalyDetector:
 
     def predict(self, window: torch.Tensor) -> bool:
         return self.score(window) > self.threshold
-    
