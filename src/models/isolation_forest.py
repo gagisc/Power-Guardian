@@ -1,5 +1,4 @@
 """IsolationForest anomaly detector for PDU power metrics."""
-
 from __future__ import annotations
 
 import numpy as np
@@ -34,10 +33,11 @@ class PDUIsolationForest:
         """Return anomaly scores (lower = more anomalous)."""
         if not self._fitted:
             raise RuntimeError("Call fit() first.")
-        return self.model.score_samples(X)
+        return np.asarray(self.model.score_samples(X))
 
     def predict(self, X: np.ndarray) -> np.ndarray:
         """Return 1 (normal) or -1 (anomaly)."""
         if not self._fitted:
             raise RuntimeError("Call fit() first.")
-        return self.model.predict(X)
+        return np.asarray(self.model.predict(X))
+    
