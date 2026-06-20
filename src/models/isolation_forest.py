@@ -40,4 +40,3 @@ class PDUIsolationForest:
         if not self._fitted:
             raise RuntimeError("Call fit() first.")
         return np.asarray(self.model.predict(X))
-    
