@@ -5,6 +5,8 @@ Architecture stub — replace encoder body and adjust hyperparameters.
 
 from __future__ import annotations
 
+from typing import cast
+
 import torch
 import torch.nn as nn
 
@@ -53,7 +55,7 @@ class PowerLSTM(nn.Module):
         z = self.latent(h[-1])  # (batch, latent_dim)
         expanded = self.expand(z).unsqueeze(1).repeat(1, self.seq_len, 1)
         out, _ = self.decoder(expanded)
-        return self.output_layer(out)  # (batch, seq_len, n_features)
+        return cast(torch.Tensor, self.output_layer(out))  # (batch, seq_len, n_features)
 
 
 class SequenceAnomalyDetector:
