@@ -3,6 +3,7 @@
 Architecture stub — replace encoder body and adjust hyperparameters.
 """
 from __future__ import annotations
+
 import torch
 import torch.nn as nn
 
@@ -51,7 +52,7 @@ class PowerLSTM(nn.Module):
 
 
 class SequenceAnomalyDetector:
-    def __init__(self, n_features=8, seq_len=32, threshold=0.05):
+    def __init__(self, n_features: int = 8, seq_len: int = 32, threshold: float = 0.05) -> None:
         self.model = PowerLSTM(n_features=n_features, seq_len=seq_len)
         self.model.eval()
         self.threshold = threshold

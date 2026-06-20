@@ -6,7 +6,11 @@ Exposes SNMP and Modbus readings as Prometheus gauges on :9200/metrics.
 Usage: python src/exporter/prometheus_exporter.py
 """
 from __future__ import annotations
-import logging, time, os
+
+import logging
+import os
+import time
+
 logger = logging.getLogger(__name__)
 
 try:
@@ -30,14 +34,14 @@ METRIC_DEFS = {
 }
 
 
-def init_gauges():
+def init_gauges() -> None:
     if not HAS_PROMETHEUS:
         return
     for name, (desc, labels) in METRIC_DEFS.items():
         GAUGES[name] = Gauge(name, desc, labels)
 
 
-def export_metrics(metrics: dict, device: str = "sim"):
+def export_metrics(metrics: dict, device: str = "sim") -> None:
     if not HAS_PROMETHEUS:
         logger.info("(dry-run) metrics: %s", metrics)
         return
@@ -55,17 +59,20 @@ def export_metrics(metrics: dict, device: str = "sim"):
             GAUGES[dst].labels(device=device).set(metrics[src])
 
 
-def main():
+def main() -> None:
     port = int(os.environ.get("PROMETHEUS_PORT", 9200))
     if HAS_PROMETHEUS:
-        init_gauges(); start_http_server(port)
+        init_gauges()
+        start_http_server(port)
         logger.info("Prometheus exporter started on :%d", port)
     # Import collector stubs (simulation mode)
-    import sys; sys.path.insert(0,"src")
-    from collectors.snmp_collector import SNMPCollector
+    import sys
+    sys.path.insert(0, "src")
     from collectors.modbus_collector import ModbusCollector
+    from collectors.snmp_collector import SNMPCollector
+
     snmp_eaton = SNMPCollector(device_name="eaton_epdu")
-    snmp_apc   = SNMPCollector(device_name="apc_smartups")
+    snmp_apc = SNMPCollector(device_name="apc_smartups")
     modbus_sch = ModbusCollector()
     while True:
         m = {}
@@ -74,6 +81,7 @@ def main():
         m.update(modbus_sch.poll())
         export_metrics(m)
         time.sleep(30)
+
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)

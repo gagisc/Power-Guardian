@@ -4,23 +4,27 @@ Modbus/TCP collector for Schneider Galaxy UPS.
 Falls back to simulator when host is unreachable or pymodbus is not installed.
 """
 from __future__ import annotations
-import logging, os, time
+
+import logging
+import os
+import time
+
 import numpy as np
 
 logger = logging.getLogger(__name__)
 
 REGISTER_MAP = {
-    "input_voltage_v":   (0x0001, 0.1),
-    "input_frequency_hz":(0x0003, 0.1),
-    "output_voltage_v":  (0x0010, 0.1),
-    "output_current_a":  (0x0012, 0.1),
-    "output_power_kva":  (0x0014, 0.01),
-    "output_power_kw":   (0x0016, 0.01),
-    "output_load_pct":   (0x0018, 1),
+    "input_voltage_v": (0x0001, 0.1),
+    "input_frequency_hz": (0x0003, 0.1),
+    "output_voltage_v": (0x0010, 0.1),
+    "output_current_a": (0x0012, 0.1),
+    "output_power_kva": (0x0014, 0.01),
+    "output_power_kw": (0x0016, 0.01),
+    "output_load_pct": (0x0018, 1),
     "battery_voltage_v": (0x0020, 0.1),
-    "battery_charge_pct":(0x0022, 1),
-    "battery_temp_c":    (0x0024, 0.1),
-    "bypass_voltage_v":  (0x0030, 0.1),
+    "battery_charge_pct": (0x0022, 1),
+    "battery_temp_c": (0x0024, 0.1),
+    "bypass_voltage_v": (0x0030, 0.1),
 }
 
 
@@ -55,7 +59,9 @@ class ModbusCollector:
     def _host_reachable(self) -> bool:
         import socket
         try:
-            socket.setdefaulttimeout(1); socket.socket().connect((self.host, self.port)); return True
+            socket.setdefaulttimeout(1)
+            socket.socket().connect((self.host, self.port))
+            return True
         except Exception:
             return False
 
@@ -66,7 +72,8 @@ class ModbusCollector:
         try:
             from pymodbus.client import ModbusTcpClient  # type: ignore
         except ImportError:
-            logger.error("pip install pymodbus"); return {}
+            logger.error("pip install pymodbus")
+            return {}
         client = ModbusTcpClient(self.host, port=self.port)
         client.connect()
         result = {"timestamp": time.time()}

@@ -1,5 +1,6 @@
 """IsolationForest anomaly detector for PDU power metrics."""
 from __future__ import annotations
+
 import numpy as np
 from sklearn.ensemble import IsolationForest  # type: ignore
 
@@ -23,7 +24,7 @@ class PDUIsolationForest:
         )
         self._fitted = False
 
-    def fit(self, X: np.ndarray) -> "PDUIsolationForest":
+    def fit(self, X: np.ndarray) -> PDUIsolationForest:
         self.model.fit(X)
         self._fitted = True
         return self

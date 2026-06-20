@@ -10,13 +10,17 @@ label=0 normal, label=1 anomaly (over-current spike or UPS transfer event).
 Usage: python src/simulator/pdu_simulator.py --n-steps 500
 """
 from __future__ import annotations
-import argparse, csv, time
+
+import argparse
+import csv
+import time
 from pathlib import Path
+
 import numpy as np
 
 COLUMNS = [
-    "timestamp","eaton_power_w","eaton_current_a","eaton_pf",
-    "apc_output_w","apc_battery_pct","schneider_kw","schneider_load_pct","label"
+    "timestamp", "eaton_power_w", "eaton_current_a", "eaton_pf",
+    "apc_output_w", "apc_battery_pct", "schneider_kw", "schneider_load_pct", "label",
 ]
 
 
@@ -29,13 +33,19 @@ def simulate(n_steps: int = 300, seed: int = 42) -> list[dict]:
         label = 0
         eaton_p = 3200 + rng.normal(0, 80)
         apc_out = 5000 + rng.normal(0, 120)
-        sch_kw  = 9.5  + rng.normal(0, 0.3)
+        sch_kw = 9.5 + rng.normal(0, 0.3)
         # inject anomaly ~5 %
         if rng.random() < 0.05:
             kind = rng.integers(3)
-            if kind == 0:   eaton_p += rng.uniform(800, 2000); label = 1  # over-current
-            elif kind == 1: apc_out -= rng.uniform(3000,4000); label = 1  # UPS transfer
-            else:           sch_kw  += rng.uniform(5, 12);     label = 1  # load spike
+            if kind == 0:
+                eaton_p += rng.uniform(800, 2000)
+                label = 1  # over-current
+            elif kind == 1:
+                apc_out -= rng.uniform(3000, 4000)
+                label = 1  # UPS transfer
+            else:
+                sch_kw += rng.uniform(5, 12)
+                label = 1  # load spike
         rows.append({
             "timestamp": ts,
             "eaton_power_w": round(eaton_p, 2),
@@ -50,7 +60,7 @@ def simulate(n_steps: int = 300, seed: int = 42) -> list[dict]:
     return rows
 
 
-def main():
+def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--n-steps", type=int, default=300)
     ap.add_argument("--seed", type=int, default=42)
@@ -60,9 +70,12 @@ def main():
     rows = simulate(args.n_steps, args.seed)
     out = Path(args.out_dir) / "pdu_power.csv"
     with open(out, "w", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=COLUMNS); w.writeheader(); w.writerows(rows)
+        w = csv.DictWriter(f, fieldnames=COLUMNS)
+        w.writeheader()
+        w.writerows(rows)
     anomaly_count = sum(r["label"] for r in rows)
     print(f"Wrote {len(rows)} rows ({anomaly_count} anomalies) → {out}")
+
 
 if __name__ == "__main__":
     main()

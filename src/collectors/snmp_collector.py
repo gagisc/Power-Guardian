@@ -7,22 +7,21 @@ Falls back to a simulator when host is unreachable.
 No real credentials stored here. Load community strings from environment.
 """
 from __future__ import annotations
-import logging, os, time
+
+import importlib.util
+import logging
+import os
+import time
 from typing import Any
+
 import numpy as np
 
 logger = logging.getLogger(__name__)
 
 
-def _try_import_pysnmp():
-    try:
-        from pysnmp.hlapi import (
-            getCmd, SnmpEngine, CommunityData, UdpTransportTarget,
-            ContextData, ObjectType, ObjectIdentity,
-        )
-        return True
-    except ImportError:
-        return False
+def _try_import_pysnmp() -> bool:
+    """Return True if pysnmp is installed, without importing unused names."""
+    return importlib.util.find_spec("pysnmp.hlapi") is not None
 
 
 class SNMPCollector:
@@ -62,7 +61,9 @@ class SNMPCollector:
     def _host_reachable(self) -> bool:
         import socket
         try:
-            socket.setdefaulttimeout(1); socket.socket().connect((self.host, self.port)); return True
+            socket.setdefaulttimeout(1)
+            socket.socket().connect((self.host, self.port))
+            return True
         except Exception:
             return False
 
@@ -71,13 +72,19 @@ class SNMPCollector:
         if self._simulate:
             return self._sim_poll()
         if not self._has_pysnmp:
-            logger.error("pysnmp not installed. pip install pysnmp"); return {}
+            logger.error("pysnmp not installed. pip install pysnmp")
+            return {}
         return self._live_poll()
 
     def _live_poll(self) -> dict[str, Any]:
         from pysnmp.hlapi import (
-            getCmd, SnmpEngine, CommunityData, UdpTransportTarget,
-            ContextData, ObjectType, ObjectIdentity,
+            CommunityData,
+            ContextData,
+            ObjectIdentity,
+            ObjectType,
+            SnmpEngine,
+            UdpTransportTarget,
+            getCmd,
         )
         result = {}
         for name, oid in self.oid_map.items():
