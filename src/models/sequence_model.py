@@ -2,6 +2,7 @@
 
 Architecture stub — replace encoder body and adjust hyperparameters.
 """
+
 from __future__ import annotations
 
 import torch
@@ -31,24 +32,28 @@ class PowerLSTM(nn.Module):
         super().__init__()
         self.seq_len = seq_len
         self.encoder = nn.LSTM(
-            input_size=n_features, hidden_size=hidden_dim,
-            num_layers=n_layers, batch_first=True,
+            input_size=n_features,
+            hidden_size=hidden_dim,
+            num_layers=n_layers,
+            batch_first=True,
         )
         self.latent = nn.Linear(hidden_dim, latent_dim)
         self.expand = nn.Linear(latent_dim, hidden_dim)
         self.decoder = nn.LSTM(
-            input_size=hidden_dim, hidden_size=hidden_dim,
-            num_layers=n_layers, batch_first=True,
+            input_size=hidden_dim,
+            hidden_size=hidden_dim,
+            num_layers=n_layers,
+            batch_first=True,
         )
         self.output_layer = nn.Linear(hidden_dim, n_features)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         # x: (batch, seq_len, n_features)
         _, (h, _) = self.encoder(x)
-        z = self.latent(h[-1])                     # (batch, latent_dim)
+        z = self.latent(h[-1])  # (batch, latent_dim)
         expanded = self.expand(z).unsqueeze(1).repeat(1, self.seq_len, 1)
         out, _ = self.decoder(expanded)
-        return self.output_layer(out)              # (batch, seq_len, n_features)
+        return self.output_layer(out)  # (batch, seq_len, n_features)
 
 
 class SequenceAnomalyDetector:
