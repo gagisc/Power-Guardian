@@ -3,6 +3,7 @@ Modbus/TCP collector for Schneider Galaxy UPS.
 
 Falls back to simulator when host is unreachable or pymodbus is not installed.
 """
+
 from __future__ import annotations
 
 import logging
@@ -49,8 +50,10 @@ class ModbusCollector:
         self.host = host or os.environ.get("SCHNEIDER_GALAXY_HOST", "PLACEHOLDER")
         self.port = port
         self.unit_id = unit_id
-        self._simulate = simulate if simulate is not None else (
-            self.host == "PLACEHOLDER" or not self._host_reachable()
+        self._simulate = (
+            simulate
+            if simulate is not None
+            else (self.host == "PLACEHOLDER" or not self._host_reachable())
         )
         self._rng = np.random.default_rng(7)
         if self._simulate:
@@ -58,6 +61,7 @@ class ModbusCollector:
 
     def _host_reachable(self) -> bool:
         import socket
+
         try:
             socket.setdefaulttimeout(1)
             socket.socket().connect((self.host, self.port))
@@ -89,15 +93,27 @@ class ModbusCollector:
     def _sim_poll(self) -> dict:
         result = {"timestamp": time.time()}
         sim = {
-            "input_voltage_v": 230.0, "input_frequency_hz": 50.0,
-            "output_voltage_v": 230.0, "output_current_a": 43.5,
-            "output_power_kva": 10.0, "output_power_kw": 9.5,
-            "output_load_pct": 63.0, "battery_voltage_v": 216.0,
-            "battery_charge_pct": 94.0, "battery_temp_c": 26.0,
+            "input_voltage_v": 230.0,
+            "input_frequency_hz": 50.0,
+            "output_voltage_v": 230.0,
+            "output_current_a": 43.5,
+            "output_power_kva": 10.0,
+            "output_power_kw": 9.5,
+            "output_load_pct": 63.0,
+            "battery_voltage_v": 216.0,
+            "battery_charge_pct": 94.0,
+            "battery_temp_c": 26.0,
             "bypass_voltage_v": 230.0,
         }
-        noises = {"voltage": 2.0, "current": 0.5, "power": 0.3, "kw": 0.2,
-                  "pct": 1.0, "freq": 0.05, "temp": 0.5}
+        noises = {
+            "voltage": 2.0,
+            "current": 0.5,
+            "power": 0.3,
+            "kw": 0.2,
+            "pct": 1.0,
+            "freq": 0.05,
+            "temp": 0.5,
+        }
         for name, base in sim.items():
             key = next((k for k in noises if k in name), None)
             sigma = noises.get(key, 0.5)

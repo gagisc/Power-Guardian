@@ -6,6 +6,7 @@ Falls back to a simulator when host is unreachable.
 
 No real credentials stored here. Load community strings from environment.
 """
+
 from __future__ import annotations
 
 import importlib.util
@@ -51,8 +52,10 @@ class SNMPCollector:
         self.oid_map = oid_map or {}
         self.device_name = device_name
         self._has_pysnmp = _try_import_pysnmp()
-        self._simulate = simulate if simulate is not None else (
-            self.host == "PLACEHOLDER" or not self._host_reachable()
+        self._simulate = (
+            simulate
+            if simulate is not None
+            else (self.host == "PLACEHOLDER" or not self._host_reachable())
         )
         if self._simulate:
             logger.warning("SNMPCollector[%s]: SIMULATION mode.", device_name)
@@ -60,6 +63,7 @@ class SNMPCollector:
 
     def _host_reachable(self) -> bool:
         import socket
+
         try:
             socket.setdefaulttimeout(1)
             socket.socket().connect((self.host, self.port))
@@ -86,12 +90,15 @@ class SNMPCollector:
             UdpTransportTarget,
             getCmd,
         )
+
         result = {}
         for name, oid in self.oid_map.items():
             for err_ind, err_stat, _, var_binds in getCmd(
-                SnmpEngine(), CommunityData(self.community),
+                SnmpEngine(),
+                CommunityData(self.community),
                 UdpTransportTarget((self.host, self.port), timeout=5, retries=2),
-                ContextData(), ObjectType(ObjectIdentity(oid)),
+                ContextData(),
+                ObjectType(ObjectIdentity(oid)),
             ):
                 if err_ind or err_stat:
                     logger.warning("SNMP error for %s: %s %s", name, err_ind, err_stat)
@@ -102,11 +109,16 @@ class SNMPCollector:
     def _sim_poll(self) -> dict[str, Any]:
         """Return plausible simulated values keyed by OID name."""
         templates = {
-            "voltage": (230.0, 2.0), "current": (10.0, 1.0),
-            "power": (3000.0, 150.0), "energy": (9999.0, 5.0),
-            "pf": (0.95, 0.02), "charge": (95.0, 1.0),
-            "temp": (25.0, 1.0), "load": (60.0, 5.0),
-            "freq": (50.0, 0.1), "runtime": (120.0, 2.0),
+            "voltage": (230.0, 2.0),
+            "current": (10.0, 1.0),
+            "power": (3000.0, 150.0),
+            "energy": (9999.0, 5.0),
+            "pf": (0.95, 0.02),
+            "charge": (95.0, 1.0),
+            "temp": (25.0, 1.0),
+            "load": (60.0, 5.0),
+            "freq": (50.0, 0.1),
+            "runtime": (120.0, 2.0),
         }
         result = {"timestamp": time.time()}
         for name in self.oid_map:

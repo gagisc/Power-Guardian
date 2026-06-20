@@ -9,6 +9,7 @@ label=0 normal, label=1 anomaly (over-current spike or UPS transfer event).
 
 Usage: python src/simulator/pdu_simulator.py --n-steps 500
 """
+
 from __future__ import annotations
 
 import argparse
@@ -19,8 +20,15 @@ from pathlib import Path
 import numpy as np
 
 COLUMNS = [
-    "timestamp", "eaton_power_w", "eaton_current_a", "eaton_pf",
-    "apc_output_w", "apc_battery_pct", "schneider_kw", "schneider_load_pct", "label",
+    "timestamp",
+    "eaton_power_w",
+    "eaton_current_a",
+    "eaton_pf",
+    "apc_output_w",
+    "apc_battery_pct",
+    "schneider_kw",
+    "schneider_load_pct",
+    "label",
 ]
 
 
@@ -46,17 +54,19 @@ def simulate(n_steps: int = 300, seed: int = 42) -> list[dict]:
             else:
                 sch_kw += rng.uniform(5, 12)
                 label = 1  # load spike
-        rows.append({
-            "timestamp": ts,
-            "eaton_power_w": round(eaton_p, 2),
-            "eaton_current_a": round(eaton_p / 230.0, 3),
-            "eaton_pf": round(float(rng.normal(0.95, 0.01)), 3),
-            "apc_output_w": round(apc_out, 2),
-            "apc_battery_pct": round(float(rng.normal(95, 1)), 1),
-            "schneider_kw": round(sch_kw, 3),
-            "schneider_load_pct": round(sch_kw / 15.0 * 100, 1),
-            "label": label,
-        })
+        rows.append(
+            {
+                "timestamp": ts,
+                "eaton_power_w": round(eaton_p, 2),
+                "eaton_current_a": round(eaton_p / 230.0, 3),
+                "eaton_pf": round(float(rng.normal(0.95, 0.01)), 3),
+                "apc_output_w": round(apc_out, 2),
+                "apc_battery_pct": round(float(rng.normal(95, 1)), 1),
+                "schneider_kw": round(sch_kw, 3),
+                "schneider_load_pct": round(sch_kw / 15.0 * 100, 1),
+                "label": label,
+            }
+        )
     return rows
 
 
