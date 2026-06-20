@@ -21,8 +21,12 @@ logger = logging.getLogger(__name__)
 
 
 def _try_import_pysnmp() -> bool:
+    try:
+        return importlib.util.find_spec("pysnmp.hlapi") is not None
+    except ModuleNotFoundError:
+        return False
     """Return True if pysnmp is installed, without importing unused names."""
-    return importlib.util.find_spec("pysnmp.hlapi") is not None
+    #return importlib.util.find_spec("pysnmp.hlapi") is not None
 
 
 class SNMPCollector:
