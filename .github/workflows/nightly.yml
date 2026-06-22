@@ -61,7 +61,7 @@ jobs:
           EOF
 
       - name: Upload benchmark artefacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: nightly-benchmark-pdu-power-guardian-${{ github.run_id }}
           path: |
