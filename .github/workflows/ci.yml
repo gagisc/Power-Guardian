@@ -47,7 +47,7 @@ jobs:
       - run: pip install bandit[toml]
       - run: bandit -r src/ -ll --exit-zero -f json -o bandit-report.json
       - run: bandit -r src/ -ll
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with: { name: bandit-report-pdu, path: bandit-report.json }
 
@@ -72,7 +72,7 @@ jobs:
       - name: Run tests
         run: |
           pytest tests/ -v --tb=short             --cov=src --cov-report=xml --cov-fail-under=25
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: coverage-pdu-py${{ matrix.python-version }}
           path: coverage.xml
@@ -106,7 +106,7 @@ jobs:
           assert rows["f1"] >= 0.0, "F1 must be non-negative"
           print("PDU smoke validation PASSED")
           EOF
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: smoke-results-pdu
           path: experiments/results/
