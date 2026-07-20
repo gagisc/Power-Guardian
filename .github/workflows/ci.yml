@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with: { python-version: "${{ env.PYTHON_VERSION }}" }
       - run: pip install ruff==0.4.8
       - run: ruff check src/ experiments/ --output-format=github
@@ -31,7 +31,7 @@ jobs:
     needs: lint
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with: { python-version: "${{ env.PYTHON_VERSION }}" }
       - run: pip install mypy numpy pandas-stubs types-PyYAML torch scikit-learn
       - run: mypy src/ --ignore-missing-imports --no-strict-optional
@@ -42,7 +42,7 @@ jobs:
     needs: lint
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with: { python-version: "${{ env.PYTHON_VERSION }}" }
       - run: pip install bandit[toml]
       - run: bandit -r src/ -ll --exit-zero -f json -o bandit-report.json
@@ -60,7 +60,7 @@ jobs:
         python-version: ["3.11", "3.12"]
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with: { python-version: "${{ matrix.python-version }}" }
       - name: Cache pip
         uses: actions/cache@v6
@@ -83,7 +83,7 @@ jobs:
     needs: test
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with: { python-version: "${{ env.PYTHON_VERSION }}" }
       - name: Cache pip
         uses: actions/cache@v6
