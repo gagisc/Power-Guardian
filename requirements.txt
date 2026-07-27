@@ -6,6 +6,6 @@ pymodbus>=3.13.1
 pysnmp>=6.1
 prometheus-client>=0.20
 matplotlib>=3.11.1
-streamlit>=1.35
+streamlit>=1.60.0
 plotly>=6.9.0
 pytest>=9.1.1
